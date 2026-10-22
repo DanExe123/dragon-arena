@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dragon Arena</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--bg:#14101c;--panel:#231b30;--panel2:#2e2340;--ink:#f1e8dc;--mute:#b3a6c4;--gold:#f0b24a;--ember:#e8573a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:radial-gradient(900px 500px at 50% -10%,#3a1f3d,var(--bg));background-color:var(--bg);color:var(--ink);font:16px/1.4 system-ui,sans-serif;min-height:100vh}
+main{max-width:760px;margin:0 auto;padding:16px}
+h1{font:800 28px 'Cinzel',Georgia,serif;margin:4px 0}
+h2,h3{font-family:'Cinzel',Georgia,serif;margin:0}
+.top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
+.coins{font:800 20px 'Cinzel',Georgia,serif;color:var(--gold)}
+.roster{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
+.card{background:var(--panel);border:2px solid transparent;border-radius:12px;padding:8px;color:var(--ink);cursor:pointer;text-align:center;font:inherit}
+.card.on{border-color:var(--gold)}
+.card svg{width:100%;max-width:130px;height:auto}
+.card b{display:block;font:600 15px 'Cinzel',Georgia,serif}
+.card small{color:var(--mute)}
+button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.detail{background:var(--panel);border-radius:12px;padding:14px;margin:12px 0}
+.sk{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid #ffffff18;font-size:14px}
+.sk span{color:var(--mute);text-align:right}
+.row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.btn{border:0;border-radius:10px;padding:11px 16px;font:600 15px system-ui;cursor:pointer;color:#fff;background:var(--ember)}
+.btn.alt{background:var(--panel2);color:var(--ink)}
+.btn:disabled{background:#47405a;color:#968ba8;cursor:default}
+input{background:var(--panel2);border:1px solid #ffffff30;border-radius:10px;color:var(--ink);padding:10px 12px;font:15px system-ui;width:150px}
+.stage{position:relative;height:300px;background:linear-gradient(#2a1d3f,#3b2542 62%,#2a1c2c 62%);border-radius:12px;overflow:hidden}
+.dr{position:absolute;bottom:14px;width:44%;text-align:center}
+#da{left:3%}#db{right:3%}
+.dr .art svg{width:100%;max-width:190px;display:block;margin:0 auto}
+#db .art{transform:scaleX(-1)}
+.dr h3{font-size:14px}
+.dr .art svg{animation:bob 2.2s ease-in-out infinite}
+#db .art svg{animation-delay:-1.1s}
+@keyframes bob{50%{transform:translateY(-7px)}}
+.dr small{color:var(--mute);font-size:12px}
+.meter{height:9px;background:#0007;border-radius:6px;overflow:hidden;margin:4px 0}
+.meter i{display:block;height:100%;transition:width .35s}
+.hp i{background:#6fcf6a}.en i{background:#5aa9ff}
+.proj{position:absolute;border-radius:50%;display:grid;place-items:center;pointer-events:none;z-index:3;background:#ffffff22}
+.pt{position:absolute;width:10px;height:10px;border-radius:50%;pointer-events:none;z-index:3}
+.num{position:absolute;font:800 28px 'Cinzel',Georgia,serif;pointer-events:none;z-index:4;text-shadow:0 2px 4px #000}
+.skills{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.skills .btn{text-align:left;font-size:14px}
+.skills small{display:block;font-weight:400;opacity:.85}
+#turn{margin-top:10px;font:600 15px 'Cinzel',Georgia,serif;text-align:center}
+#log{margin-top:10px;background:var(--panel);border-radius:12px;padding:10px 12px;min-height:84px;font-size:14px;color:var(--mute)}
+#log p{margin:2px 0}#log p:first-child{color:var(--ink)}
+.hint{color:var(--mute);font-size:13px;margin:8px 0 0}
+@media(max-width:520px){.skills{grid-template-columns:1fr}.stage{height:260px}}
+</style></head><body><main>
+<div class="top"><h1>Dragon Arena</h1><div class="coins" id="coins"></div></div>
+<div id="view"></div>
+<script>
+const EL={fire:{e:'🔥',beats:'nature'},nature:{e:'🌿',beats:'water'},water:{e:'💧',beats:'fire'},storm:{e:'⚡',beats:null}};
+const D=[
+{id:'pyrax',n:'Pyrax',el:'fire',c:'#d9482f',w:'#8f2a2a',b:'#f2b36a',a:'#ffd23f',s:[
+ {n:'Ember Bite',p:1,c:0,t:'Melee strike, gains extra energy'},
+ {n:'Flame Burst',p:1.8,c:30,t:'Fireball'},
+ {n:'Inferno Roar',p:3.2,c:60,t:'Huge firestorm'}]},
+{id:'tidal',n:'Tidalis',el:'water',c:'#2f7fc4',w:'#1f4f8a',b:'#a8dcf0',a:'#7ff0ff',s:[
+ {n:'Splash Tail',p:1,c:0,t:'Melee strike, gains extra energy'},
+ {n:'Tidal Surge',p:1.4,c:30,fx:'heal',t:'Water jet, heals 20% HP'},
+ {n:'Tsunami',p:2.6,c:60,fx:'stun',t:'Foe loses its next turn'}]},
+{id:'verdis',n:'Verdis',el:'nature',c:'#4a9a45',w:'#2d6a3a',b:'#d8e89a',a:'#c6ff6a',s:[
+ {n:'Thorn Lash',p:1,c:0,t:'Melee strike, gains extra energy'},
+ {n:'Vine Snare',p:1.3,c:30,fx:'shield',t:'Halves the next hit you take'},
+ {n:'Gaia Crush',p:2.8,c:60,fx:'heal',t:'Massive hit, heals 20% HP'}]},
+{id:'volt',n:'Voltrix',el:'storm',c:'#7b5fd0',w:'#473a96',b:'#e2d6ff',a:'#fff35c',s:[
+ {n:'Spark Claw',p:1,c:0,t:'Melee strike, gains extra energy'},
+ {n:'Static Bolt',p:1.3,c:30,fx:'stun',t:'Lightning, stuns the foe'},
+ {n:'Storm Fury',p:3.4,c:60,t:'Raging lightning, neutral to all'}]}];
+const art=d=>`<svg viewBox="0 0 120 100" role="img" aria-label="${d.n}"><circle cx="62" cy="52" r="46" fill="${d.a}" opacity=".12"/><path d="M34 66Q8 70 6 90Q22 80 40 78Z" fill="${d.c}"/><path d="M52 50Q30 8 14 22Q28 28 30 46Q40 40 52 50Z" fill="${d.w}"/><rect x="44" y="66" width="8" height="22" rx="3" fill="${d.c}"/><ellipse cx="60" cy="64" rx="30" ry="20" fill="${d.c}"/><ellipse cx="62" cy="72" rx="20" ry="10" fill="${d.b}"/><rect x="76" y="64" width="8" height="22" rx="3" fill="${d.c}"/><path d="M60 50Q70 4 100 12Q84 24 80 46Z" fill="${d.w}" opacity=".92"/><circle cx="90" cy="44" r="15" fill="${d.c}"/><ellipse cx="102" cy="49" rx="9" ry="6" fill="${d.c}"/><path d="M84 32L78 16L92 30ZM92 30L98 16L100 32Z" fill="${d.a}"/><circle cx="94" cy="42" r="3.4" fill="${d.a}"/><circle cx="94.6" cy="42" r="1.4" fill="#111"/></svg>`;
+let coins=60,stage=1,sel=D[0],lv={pyrax:1,tidal:1,verdis:1,volt:1},B=null,note='',rn=null,offs=[];
+const $=id=>document.getElementById(id),sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const hpOf=l=>70+22*l,atkOf=l=>10+3*l,trainCost=l=>25*l;
+const mult=(a,b)=>EL[a].beats===b?1.5:EL[b].beats===a?.7:1;
+const eff=m=>m>1?' It’s super effective!':m<1?' It’s not very effective.':'';
+const rnd=()=>.9+Math.random()*.2;
+const mk=(d,l,who)=>({d,l,who,hp:hpOf(l),max:hpOf(l),en:30,sh:false});
+
+function home(){leave();B=null;$('coins').textContent='🪙 '+coins;const l=lv[sel.id];
+$('view').innerHTML=`<div class="roster">${D.map(d=>`<button class="card ${d===sel?'on':''}" data-d="${d.id}">${art(d)}<b>${d.n}</b><small>${EL[d.el].e} ${d.el} · Lv ${lv[d.id]}</small></button>`).join('')}</div>
+<div class="detail"><h2>${sel.n}, Lv ${l}</h2><p style="margin:4px 0 8px;color:var(--mute)">HP ${hpOf(l)} · Attack ${atkOf(l)}. Fire beats nature, nature beats water, water beats fire.</p>
+${sel.s.map(s=>`<div class="sk"><b>${s.n}</b><span>${s.t} · ${s.c?s.c+' energy':'free'}</span></div>`).join('')}
+<div class="row"><button class="btn" id="solo">Fight the bot · stage ${stage}</button><button class="btn alt" id="train" ${coins<trainCost(l)?'disabled':''}>Train for ${trainCost(l)} coins</button></div>
+<div class="row" style="align-items:center"><input id="code" maxlength="16" placeholder="Room code" aria-label="Room code" value="arena1"><button class="btn alt" id="online">Online duel</button></div>
+<p class="hint">Fight the bot any time. For multiplayer, you and a friend enter the same room code and take turns in real time. No friend yet? Start a bot fight from the waiting screen.</p></div><div id="log"><p>${note||'Choose a dragon, train it, then fight.'}</p></div>`}
+
+function arena(){const side=k=>`<div class="dr" id="d${k}"><h3></h3><div class="meter hp"><i></i></div><div class="meter en"><i></i></div><div class="art">${art(B[k].d)}</div><small></small></div>`;
+$('view').innerHTML=`<div class="stage" id="stage">${side('a')}${side('b')}</div><div id="turn"></div><div id="ctl"></div><div id="log"></div>`;
+$('ctl').innerHTML=`<div class="skills">${B.a.d.s.map((s,i)=>`<button class="btn" data-k="${i}">${s.n}<small>${s.c?s.c+' energy':'free · +25 energy'}</small></button>`).join('')}</div>`;update()}
+
+function update(){if(!B)return;for(const k of['a','b']){const x=B[k],e=$('d'+k),m=e.querySelectorAll('.meter i');e.querySelector('h3').textContent=`${x.who} ${EL[x.d.el].e} Lv ${x.l}`;
+m[0].style.width=Math.max(0,x.hp/x.max*100)+'%';m[1].style.width=x.en+'%';
+e.querySelector('small').textContent=`HP ${Math.max(0,Math.round(x.hp))} · Energy ${x.en}${x.sh?' · Shielded':''}`}
+$('log').innerHTML=B.log.slice(0,4).map(t=>`<p>${t}</p>`).join('');
+const mine=B.turn==='a'&&!B.busy&&!B.over;
+$('turn').textContent=B.over?'':B.turn==='a'?'Your turn':B.mode==='net'?'Waiting for your rival…':'Enemy turn';
+if(B.over)$('ctl').innerHTML=`<div class="row"><button class="btn" id="back">Back to dragons</button></div>`;
+else document.querySelectorAll('[data-k]').forEach(b=>b.disabled=!mine||B.a.en<B.a.d.s[+b.dataset.k].c)}
+
+function begin(mode,od,ol,first,peer){B={mode,peer,a:mk(sel,lv[sel.id],'You'),b:mk(od,ol,mode==='net'?'Rival':'Bot '+od.n),turn:first,busy:false,over:false,q:[],log:[mode==='net'?'Duel start! '+(first==='a'?'You strike first.':'Your rival strikes first.'):'Stage '+stage+': Bot '+od.n+' (Lv '+ol+') challenges you!']};
+arena();if(first==='b'&&mode==='ai')setTimeout(ai,700)}
+
+async function anim(side,i,dmg,heal){const st=$('stage'),me=$('d'+side),ot=$('d'+(side==='a'?'b':'a')),dir=side==='a'?1:-1,A=B[side],col=A.d.a;
+const sr=st.getBoundingClientRect(),ar=me.getBoundingClientRect(),tr=ot.getBoundingClientRect(),dx=tr.left+tr.width/2-(ar.left+ar.width/2);
+const at=(r,fx,fy)=>[r.left+r.width*fx-sr.left,r.top+r.height*fy-sr.top];
+if(i===0){await me.animate([{transform:'none'},{transform:`translateX(${-dir*14}px)`,offset:.2},{transform:`translateX(${dx*.72}px) rotate(${dir*7}deg)`,offset:.5},{transform:'none'}],{duration:620,easing:'ease-in-out'}).finished}
+else{const sz=i===2?86:50,[x,y]=at(ar,.5,.42),p=document.createElement('div');p.className='proj';p.textContent=EL[A.d.el].e;
+p.style.cssText=`width:${sz}px;height:${sz}px;font-size:${sz*.7}px;left:${x-sz/2}px;top:${y-sz/2}px;box-shadow:0 0 ${sz/2}px ${col}`;st.append(p);
+await me.animate([{transform:'none'},{transform:`translateX(${-dir*18}px) scale(.96)`},{transform:'none'}],{duration:320}).finished;
+await p.animate([{transform:'translate(0,0) scale(.5)'},{transform:`translate(${dx}px,0) scale(1.15) rotate(${dir*360}deg)`}],{duration:i===2?760:540,easing:'ease-in'}).finished;p.remove()}
+const [tx,ty]=at(tr,.5,.4),[sx,sy]=at(ar,.5,.4);
+if(dmg>0){ot.animate([{filter:'brightness(3) saturate(0)'},{filter:'none'}],{duration:260});
+ot.animate([{transform:'none'},{transform:'translateX(-12px)'},{transform:'translateX(12px)'},{transform:'translateX(-6px)'},{transform:'none'}],{duration:360});
+if(i===2)st.animate([{transform:'none'},{transform:'translate(-6px,4px)'},{transform:'translate(6px,-4px)'},{transform:'none'}],{duration:420});
+for(let n=0;n<(i===2?16:9);n++){const q=document.createElement('span'),g=n/9*6.28,r=40+Math.random()*50;q.className='pt';q.style.cssText=`left:${tx}px;top:${ty}px;background:${col}`;st.append(q);
+q.animate([{transform:'translate(0,0)',opacity:1},{transform:`translate(${Math.cos(g)*r}px,${Math.sin(g)*r}px) scale(.2)`,opacity:0}],{duration:520,easing:'ease-out'}).finished.then(()=>q.remove())}
+float(st,tx,ty,'-'+dmg,'#ff6b5a')}
+if(heal)float(st,sx,sy-30,'+'+heal,'#6fcf6a');
+await sleep(380)}
+function float(st,x,y,t,c){const n=document.createElement('div');n.className='num';n.textContent=t;n.style.cssText=`left:${x-20}px;top:${y-20}px;color:${c}`;st.append(n);
+n.animate([{transform:'translateY(0)',opacity:1},{transform:'translateY(-60px)',opacity:0}],{duration:900,easing:'ease-out'}).finished.then(()=>n.remove())}
+
+async function play(side,i,forced){if(!B||B.over||B.busy||B.turn!==side)return;const A=B[side],T=B[side==='a'?'b':'a'],s=A.d.s[i];if(!s||A.en<s.c)return;
+B.busy=true;A.en-=s.c;const m=mult(A.d.el,T.d.el);
+const dmg=forced!=null?forced:Math.round(atkOf(A.l)*s.p*m*rnd()*(T.sh?.5:1));
+if(forced==null&&side==='a'&&B.mode==='net')rn.emit('move',{i,dmg});
+T.sh=false;T.hp-=dmg;let heal=0,t=`${A.who} used ${s.n} for ${dmg} damage.${eff(m)}`;
+if(s.fx==='heal'){heal=Math.round(A.max*.2);A.hp=Math.min(A.max,A.hp+heal);t+=` Healed ${heal}.`}
+if(s.fx==='shield'){A.sh=true;t+=' Shield up.'}
+if(s.fx==='stun')t+=` ${T.who} is stunned and loses a turn.`;
+B.log.unshift(t);update();const cur=B;await anim(side,i,dmg,heal);if(B!==cur)return;
+A.en=Math.min(100,A.en+15+(i===0?10:0));B.busy=false;
+if(T.hp<=0){B.over=true;const win=side==='a';let r=0;if(win){r=B.mode==='net'?30:20+12*stage;coins+=r;if(B.mode==='ai')stage++}
+B.log.unshift(win?`Victory! You earn ${r} coins.`:'Defeat. Train and try again.');note=win?`Victory! You earned ${r} coins.`:'Defeat. Train your dragon and try again.';$('coins').textContent='🪙 '+coins;return update()}
+B.turn=s.fx==='stun'?side:side==='a'?'b':'a';update();pump();if(B.turn==='b'&&B.mode==='ai')setTimeout(ai,650)}
+function ai(){if(!B||B.over||B.turn!=='b')return;const e=B.b.en,r=Math.random();play('b',e>=60&&r<.35?2:e>=30&&r<.5?1:0)}
+function pump(){if(B&&B.mode==='net'&&!B.busy&&!B.over&&B.turn==='b'&&B.q.length){const m=B.q.shift();play('b',m.i,m.dmg)}}
+
+function leave(){offs.forEach(f=>f());offs=[];if(rn){try{rn.leave()}catch(e){}rn=null}}
+async function online(){const code=($('code').value||'').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,16)||'arena1';
+$('view').innerHTML=`<div class="detail"><h2>Room “${code}”</h2><p id="ws" style="color:var(--mute)">Connecting…</p><div class="row"><button class="btn" id="bot">Fight a bot while you wait</button><button class="btn alt" id="back">Cancel</button></div></div>`;
+let cap=null;try{cap=window.claude?await claude.use('room'):null}catch(e){}
+if(!cap){$('ws').textContent='Online play isn’t available in this view. Open the shared link while signed in to Claude.';return}
+rn=await cap.join('duel-'+code);await rn.presence({d:sel.id,lv:lv[sel.id]});
+$('ws').textContent='Waiting for an opponent. Ask a friend to open this page and join room “'+code+'”.';
+offs.push(rn.on('move',m=>{if(!B||B.mode!=='net'||m.sameTab||m.peer!==B.peer)return;const d=m.data||{};
+if(!Number.isInteger(d.i)||d.i<0||d.i>2||!Number.isFinite(d.dmg)||d.dmg<0||d.dmg>9999)return;B.q.push({i:d.i,dmg:Math.round(d.dmg)});pump()}));
+offs.push(rn.onPeers(ch=>{const ps=ch.peers;
+if(!B){const o=ps.find(p=>!p.sameTab&&p.presence&&D.some(x=>x.id===p.presence.d)),me=ps.find(p=>p.sameTab);
+if(o){const od=D.find(x=>x.id===o.presence.d),ol=Math.min(60,Math.max(1,Math.round(+o.presence.lv)||1));begin('net',od,ol,((me&&me.peer)||'')<o.peer?'a':'b',o.peer)}}
+else if(B.mode==='net'&&!B.over&&!ps.some(p=>p.peer===B.peer)){B.over=true;B.log.unshift('Your rival left the duel.');update()}}))}
+
+$('view').onclick=e=>{const t=e.target.closest('button');if(!t)return;
+if(t.dataset.d){sel=D.find(d=>d.id===t.dataset.d);note='';home()}
+else if(t.id==='solo')begin('ai',D[Math.floor(Math.random()*D.length)],stage,'a');
+else if(t.id==='online')online();
+else if(t.id==='bot'){leave();begin('ai',D[Math.floor(Math.random()*D.length)],stage,'a')}
+else if(t.id==='train'){const l=lv[sel.id],c=trainCost(l);if(coins>=c){coins-=c;lv[sel.id]++;note=sel.n+' reached level '+lv[sel.id]+'.';home()}}
+else if(t.id==='back')home();
+else if(t.dataset.k)play('a',+t.dataset.k)};
+home();
+</script></main></body></html>
